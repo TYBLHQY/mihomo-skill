@@ -1,0 +1,16 @@
+# Editor
+.DS_Store
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+*.sublime-*
+
+# OS
+Thumbs.db
+.DS_Store
+.directory
+
+# Claude
+.claude/
