@@ -128,17 +128,23 @@ proxies:
   - DIRECT
   - Proxy
   - REJECT
+```
 
+```yaml
 # 内联（紧凑，适合简单列表）
 proxies: [DIRECT, Proxy, REJECT]
+```
 
+```yaml
 # 多行对象
 - name: 节点选择
   type: select
   proxies:
     - DIRECT
     - Proxy
+```
 
+```yaml
 # 内联对象（紧凑写法）
 - { name: 节点选择, type: select, proxies: [DIRECT, Proxy] }
 ```
@@ -262,6 +268,7 @@ etag-support: true
 # 网络接口
 interface-name: en0            # 出站网络接口
 routing-mark: 6666             # Linux 路由标记
+```
 
 ### 通用字段
 
@@ -342,7 +349,13 @@ proxies:
     reality:                     # Reality 相关（vless）
       public-key: "..."
       short-id: "..."
+    ech:                         # ECH (Encrypted Client Hello) 可选
+      enabled: true
+      pq-signature-schemes-enabled: true
+      dynamic-record-sizes-disabled: false
 ```
+
+ECH (Encrypted Client Hello) 替代了已被弃用的 ESNI，用于加密 TLS 握手时的 Client Hello 消息，防止 SNI 泄露。需要服务端支持。
 
 ### WARP WireGuard 链式代理
 
@@ -384,6 +397,35 @@ proxy-groups:
     exclude-type: "wireguard"      # 排除 WARP 自身（防止循环）
 ```
 
+### WireGuard 多 Peer 配置
+
+对于需要多端点的 WireGuard 场景，使用 `peers` 数组替代顶层 `server`/`port`/`public-key`：
+
+```yaml
+proxies:
+  - name: "wg-multi-peer"
+    type: wireguard
+    private-key: "..."
+    mtu: 1280
+    ips:                          # 本地虚拟 IP
+      - "10.0.0.2/24"
+      - "fd00::2/120"
+    peers:                        # 多 peer 配置
+      - server: peer1.example.com
+        port: 51820
+        public-key: "..."
+        allowed-ips:
+          - 0.0.0.0/0
+          - "::/0"
+        persistent-keepalive-interval: 25
+        preshared-key: "..."      # 预共享密钥（可选）
+      - server: peer2.example.com
+        port: 51821
+        public-key: "..."
+        allowed-ips:
+          - 10.0.1.0/24
+```
+
 ### DIRECT 类型节点（IP 版本控制）
 
 通过 `type: direct` 创建自定义直连节点，精细控制出口的 IP 协议栈：
@@ -404,7 +446,7 @@ proxies:
 proxies:
   - name: "ws-proxy"
     type: vmess
-    ...
+    # ... 其他字段省略
     network: ws                  # ws / grpc / h2 / httpupgrade
     ws-opts:
       path: /path
@@ -414,7 +456,30 @@ proxies:
     # network: grpc
     # grpc-opts:
     #   grpc-service-name: "service.name"
+    # 或 HTTPUpgrade（用于 hysteria2 / vmess）:
+    # network: httpupgrade
+    # httpupgrade-opts:
+    #   path: /upgrade
+    #   host: example.com
+    # 或 XHTTP（vless 专用）:
+    # network: xhttp
+    # xhttp-opts:
+    #   path: /xhttp
+    #   host: example.com
+    #   mode: auto               # auto / packet-up / stream / stream-one
+    #   noise:                   # 流量噪声混淆
+    #     mode: standard
+    #     delay: 50
 ```
+
+**传输层协议说明：**
+| 类型 | 适用协议 | 特点 |
+|------|---------|------|
+| `ws` | vmess, vless, trojan | WebSocket，广泛兼容 |
+| `grpc` | vmess, vless | gRPC，适合长连接 |
+| `h2` | vmess | HTTP/2，多路复用 |
+| `httpupgrade` | vmess, hysteria2 | HTTP Upgrade 机制，比 ws 更轻量 |
+| `xhttp` | vless | 基于 HTTP/2 的传输，支持噪声混淆和多种模式（auto/packet-up/stream/stream-one） |
 
 ---
 
@@ -606,6 +671,7 @@ proxy-groups:
 
 #### url-test — 自动选择最快节点
 ```yaml
+proxy-groups:
   - name: "Auto"
     type: url-test
     proxies:
@@ -623,6 +689,7 @@ proxy-groups:
 
 #### load-balance — 负载均衡
 ```yaml
+proxy-groups:
   - name: "Load-Balance"
     type: load-balance
     proxies:
@@ -637,6 +704,7 @@ proxy-groups:
 
 #### relay — 链式代理
 ```yaml
+proxy-groups:
   - name: "Relay-Chain"
     type: relay
     proxies:
@@ -646,7 +714,12 @@ proxy-groups:
 
 代理组的 `empty-fallback` 字段可以在组为空时退回到指定策略：
 ```yaml
-    empty-fallback: COMPATIBLE   # 当组为空时的回退策略
+proxy-groups:
+  - name: "Proxy"
+    type: select
+    use:
+      - my-subscription
+    empty-fallback: DIRECT       # 当组为空时回退到 DIRECT
 ```
 
 ### 节点筛选正则表达式（filter / exclude-filter）
@@ -654,7 +727,7 @@ proxy-groups:
 使用 `filter` 和 `exclude-filter` 字段可以从订阅中按正则筛选节点名。以下是一套常用的地区筛选正则：
 
 ```yaml
-# 正向筛选 - 只包含匹配的地区
+# 定义地区筛选锚点（与上方策略组锚点配合使用）
 FilterHK: &FilterHK "^(?=.*((?i)🇭🇰|香港|港|HK|Hong))(?!.*((?i)回国|校园|游戏|🎮|教育|久虚|家宽)).*$"
 FilterTW: &FilterTW "^(?=.*((?i)🇹🇼|台湾|台|新北|彰化|TW|Taiwan))(?!.*((?i)回国|校园|游戏|🎮|教育|久虚|家宽)).*$"
 FilterJP: &FilterJP "^(?=.*((?i)🇯🇵|日本|川日|东京|大阪|泉日|埼玉|沪日|深日|JP|Japan))(?!.*((?i)回国|校园|游戏|🎮|教育|久虚|家宽)).*$"
@@ -665,21 +738,22 @@ FilterOthers: &FilterOthers "^(?!.*((?i)🇭🇰|香港|港|HK|Hong|🇹🇼|台
 FilterNetflix: &FilterNetflix "^(?=.*((?i)NF|奈飞|解锁|Netflix|NETFLIX|Media))(?!.*((?i)家宽)).*$"
 FilterHomeWidth: &FilterHomeWidth "^(?=.*((?i)家宽)).*$"
 FilterAll: &FilterAll "^(?=.*(.))(?!.*((?i)群|邀请|返利|循环|官网|客服|网站|网址|获取|订阅|流量|到期|机场|下次|版本|官址|备用|过期|已用|联系|邮箱|工单|贩卖|通知|倒卖|防止|国内|地址|频道|无法|说明|使用|提示|特别|访问|支持|教程|关注|更新|作者|加入|家宽|(\\b(USE|USED|TOTAL|EXPIRE|EMAIL|Panel|Channel|Author)\\b|(\\d{4}-\\d{2}-\\d{2}|\\d+G)))).*$"
-```
 
-```yaml
-# 使用示例
+# 搭配策略组锚点的使用示例（UrlTest/Select 锚点见上方锚点模板部分）
 proxy-groups:
   - name: 🇭🇰 香港节点
-    <<: *UrlTest
+    type: url-test
+    url: "https://cp.cloudflare.com/generate_204"
+    interval: 180
+    tolerance: 50
     filter: *FilterHK
 
   - name: 🎥 奈飞节点
-    <<: *Select
+    type: select
     filter: *FilterNetflix
 
   - name: 🏁 其他节点-手动
-    <<: *Select
+    type: select
     filter: *FilterOthers
 ```
 
@@ -709,7 +783,10 @@ rules:
   - IP-CIDR6,2620:0:2d0:200::7/32,Proxy                  # IPv6
   - IP-SUFFIX,8.8.8.8/24,Proxy                            # IP 后缀
   - IP-ASN,13335,DIRECT                                   # ASN 编号
-  - SRC-IP-CIDR,192.168.1.201/32,DIRECT                   # 源 IP
+  - SRC-IP-CIDR,192.168.1.201/32,DIRECT                   # 源 IP 段
+  - SRC-GEOIP,CN,DIRECT,no-resolve                        # 源 IP 地理位置
+  - SRC-IP-ASN,13335,DIRECT                               # 源 IP ASN 编号
+  - SRC-IP-SUFFIX,192.168.0.0/24,Proxy                    # 源 IP 后缀
 
   # --- 端口匹配 ---
   - DST-PORT,80,DIRECT                                    # 目标端口
@@ -726,6 +803,8 @@ rules:
   - PROCESS-NAME-WILDCARD,*telegram*,Proxy                # 进程名通配符
   - PROCESS-NAME-REGEX,(?i)Telegram,Proxy                 # 进程名正则
   - PROCESS-PATH,/usr/bin/wget,Proxy                      # 完整路径
+  - PROCESS-PATH-WILDCARD,*\/chrome*,Proxy                # 进程路径通配符
+  - PROCESS-PATH-REGEX,.*firefox.*,Proxy                  # 进程路径正则
   - UID,1001,DIRECT                                       # Linux 用户 ID
 
   # --- 系统/传输 ---
@@ -754,6 +833,18 @@ rules:
 ### no-resolve 说明
 
 IP 类规则追加 `,no-resolve` 可以跳过 DNS 解析。但如果前面的规则已经触发了解析，后续即使有 `no-resolve` 也会匹配。
+
+### src 参数
+
+对于 `IP-CIDR`、`IP-CIDR6`、`IP-SUFFIX`、`IP-ASN` 等 IP 类规则，可以通过 `src` 参数将匹配对象从目标 IP 切换为源 IP：
+
+```yaml
+rules:
+  - IP-CIDR,192.168.0.0/16,DIRECT,src                     # 源 IP 匹配（等价于 SRC-IP-CIDR）
+  - IP-ASN,13335,DIRECT,src,no-resolve                    # 源 ASN 匹配 + 跳过 DNS 解析
+```
+
+当 `src` 和 `no-resolve` 同时使用时，顺序无关，用逗号分隔即可。
 
 ---
 
@@ -1399,8 +1490,6 @@ profile:
 
 ## 常见配置模板
 
-## 常见配置模板
-
 ### 场景一：基础代理客户端（TUN 全局代理）
 
 ```yaml
@@ -1773,6 +1862,153 @@ rules:
   - GEOIP,CN,🎯 全球直连
   - MATCH,🐟 漏网之鱼
 ```
+
+### 场景五：纯 RULE-SET 模式（全 MRS 规则集）
+
+完全使用 RULE-SET 引用外部 MRS 文件，所有规则由规则集管理，配置变更只需更新规则集 URL 而无需修改 rules 段。推荐给追求"零硬编码"的用户。
+
+```yaml
+# 全局设置
+mixed-port: 7890
+allow-lan: false
+mode: rule
+log-level: info
+ipv6: false
+external-controller: 127.0.0.1:9090
+secret: ""
+global-client-fingerprint: random
+tcp-concurrent: true
+unified-delay: true
+find-process-mode: strict
+
+# Profile
+profile:
+  store-selected: true
+  store-fake-ip: true
+
+# DNS 三层级
+dns:
+  enable: true
+  ipv6: false
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  fake-ip-filter:
+    - rule-set:fakeip-filter
+    - geosite:private
+    - geosite:tracker
+  default-nameserver:
+    - system
+    - tls://223.5.5.5
+    - tls://223.6.6.6
+  nameserver:
+    - https://1.1.1.1/dns-query
+    - https://8.8.8.8/dns-query
+  proxy-server-nameserver:
+    - https://dns.alidns.com/dns-query
+    - https://doh.pub/dns-query
+  direct-nameserver:
+    - https://dns.alidns.com/dns-query
+    - https://doh.pub/dns-query
+  respect-rules: true
+
+# 规则集合锚点（紧凑内联风格）
+BD: &BD {type: http, behavior: domain,  format: mrs, interval: 86400, proxy: DIRECT}
+BC: &BC {type: http, behavior: classical, format: mrs, interval: 86400, proxy: DIRECT}
+
+rule-providers:
+  # 基础分类
+  reject:      {<<: *BC, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/reject.mrs"}
+  private:     {<<: *BC, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/private.mrs"}
+  cn:          {<<: *BC, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geolocation-cn.mrs"}
+  proxy:       {<<: *BC, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/geolocation-!cn.mrs"}
+  # 服务分类
+  google:      {<<: *BD, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/google.mrs"}
+  telegram:    {<<: *BD, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/telegram.mrs"}
+  youtube:     {<<: *BD, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/youtube.mrs"}
+  netflix:     {<<: *BD, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/netflix.mrs"}
+  ai:          {<<: *BD, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/category-ai-!cn.mrs"}
+  games:       {<<: *BD, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/category-games.mrs"}
+  apple:       {<<: *BD, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/apple.mrs"}
+  microsoft:   {<<: *BD, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/microsoft.mrs"}
+  # 广告
+  ads:         {<<: *BD, url: "https://raw.githubusercontent.com/MetaCubeX/meta-rules-dat/meta/geo/category-ads-all.mrs"}
+  # FakeIP 过滤
+  fakeip-filter:
+    type: http
+    behavior: domain
+    format: mrs
+    url: "https://cdn.gh-proxy.org/https://github.com/DustinWin/ruleset_geodata/releases/download/mihomo-ruleset/fakeip-filter.mrs"
+    interval: 86400
+    proxy: DIRECT
+
+# 代理集合（订阅）
+proxy-providers:
+  Subscription:
+    type: http
+    url: "https://your-subscription-url"
+    interval: 86400
+    proxy: DIRECT
+    health-check:
+      enable: true
+      url: https://cp.cloudflare.com/generate_204
+      interval: 600
+    override:
+      udp: true
+      skip-cert-verify: true
+
+# 代理组
+proxy-groups:
+  - name: 🚀 节点选择
+    type: select
+    proxies:
+      - ♻️ 自动选择
+      - DIRECT
+  - name: ♻️ 自动选择
+    type: url-test
+    url: https://cp.cloudflare.com/generate_204
+    interval: 180
+    tolerance: 50
+    lazy: true
+    include-all: true
+  - name: 🤖 AI
+    type: select
+    proxies:
+      - 🚀 节点选择
+      - ♻️ 自动选择
+  - name: 📺 流媒体
+    type: select
+    proxies:
+      - 🚀 节点选择
+      - ♻️ 自动选择
+  - name: 🎮 游戏
+    type: select
+    proxies:
+      - DIRECT
+      - 🚀 节点选择
+  - name: 🛑 广告拦截
+    type: select
+    proxies:
+      - REJECT
+      - DIRECT
+
+rules:
+  - RULE-SET,reject,🛑 广告拦截
+  - RULE-SET,private,DIRECT
+  - RULE-SET,apple,DIRECT
+  - RULE-SET,microsoft,DIRECT
+  - RULE-SET,ai,🤖 AI
+  - RULE-SET,youtube,📺 流媒体
+  - RULE-SET,netflix,📺 流媒体
+  - RULE-SET,games,🎮 游戏
+  - RULE-SET,telegram,🚀 节点选择
+  - RULE-SET,google,🚀 节点选择
+  - RULE-SET,cn,DIRECT
+  - RULE-SET,proxy,🚀 节点选择
+  - GEOIP,CN,DIRECT
+  - MATCH,🚀 节点选择
+```
+
+> **场景五说明：** 此配置完全依赖 MRS 规则集，没有任何硬编码 GEOSITE/GEOIP 规则。所有规则逻辑由 MetaCubeX 官方规则集管理，日常维护只需更新规则集 URL 或间隔。注意 `rule-providers` 中的 `proxy: DIRECT` 确保规则集通过直连下载，避免"先有鸡还是先有蛋"的问题。
 
 ---
 
