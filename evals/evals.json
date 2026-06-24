@@ -1,0 +1,26 @@
+{
+  "skill_name": "mihomo",
+  "evals": [
+    {
+      "id": 0,
+      "name": "basic-config-generation",
+      "prompt": "我刚买了一个机场订阅，链接是 https://example.com/sub?token=abc123 。我用的是 Linux 桌面，想要配置 Mihomo 实现全局代理（TUN 模式）。帮我生成一份完整的 config.yaml，要求：1) 使用 fake-ip 模式 2) 包含订阅节点 3) 有手动选择和自动选择两种代理组 4) 使用规则集分流 5) 开启 TUN。我的 nameserver 想用国内的公共 DNS（阿里和腾讯的 DoH），fallback 用 Cloudflare 和 Google 的 DoT。",
+      "expected_output": "一份完整的 Mihomo config.yaml 配置文件",
+      "files": []
+    },
+    {
+      "id": 1,
+      "name": "troubleshooting-dns",
+      "prompt": "我的 Mihomo 配置了 TUN 模式，但很多国内网站打不开，国外网站反而正常。我怀疑是 DNS 配置有问题。这是我的当前配置：\n\ndns:\n  enable: true\n  enhanced-mode: fake-ip\n  fake-ip-range: 198.18.0.1/16\n  nameserver:\n    - 8.8.8.8\n    - 1.1.1.1\n  fallback:\n    - tls://dns.google\n\n什么原因？怎么修复？",
+      "expected_output": "DNS 问题诊断和修复方案",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "proxy-groups-rules-optimization",
+      "prompt": "我现在有一个基本的 Mihomo 配置，只有简单的 select group 和几条 GEOIP/GEOSITE 规则。我想优化配置，实现以下功能：1) 根据地区分流（港/台/日/新/美各一个组） 2) Netflix、Spotify、YouTube、Telegram、GitHub 各自独立分组 3) 国内流量直连 4) 广告拦截 5) 负载均衡组用于下载。我的订阅节点主要来自一个 proxy-provider。帮我设计 proxy-groups 和 rules 段。",
+      "expected_output": "优化后的 proxy-groups 和 rules 配置段",
+      "files": []
+    }
+  ]
+}
