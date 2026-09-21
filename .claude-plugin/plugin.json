@@ -1,0 +1,16 @@
+{
+  "name": "mihomo-skill",
+  "description": "Mihomo (Clash Meta) proxy configuration and troubleshooting skill",
+  "version": "1.0.0",
+  "author": {
+    "name": "TYBLHQY"
+  },
+  "repository": "https://github.com/TYBLHQY/mihomo-skill",
+  "license": "MIT",
+  "keywords": [
+    "mihomo",
+    "clash-meta",
+    "proxy",
+    "vpn"
+  ]
+}
