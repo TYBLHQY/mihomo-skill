@@ -9,9 +9,6 @@ description: >-
   TUIC, WireGuard, etc.). If the user is talking about proxy/VPN configuration on any platform (Windows,
   macOS, Linux, Android, OpenWrt) and the context suggests they're using or should use a Clash-compatible
   client, activate this skill.
-compatibility:
-  - yaml
-  - json
 ---
 # Mihomo (虚空终端 / Clash Meta) 使用指南
 

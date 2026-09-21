@@ -6,7 +6,7 @@
 [![GitHub Repo](https://img.shields.io/badge/GitHub-mihomo--skill-blue)](https://github.com/TYBLHQY/mihomo-skill)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-Skill-purple)](https://claude.ai/code)
 
-**Mihomo**（[Clash Meta](https://github.com/MetaCubeX/mihomo) 的二次开发分支）是一个基于规则的高性能跨平台代理客户端核心。本仓库提供了 Claude Code 的 Mihomo 技能，包含完整的配置指南和使用参考。
+**Mihomo**（[Clash Meta](https://github.com/MetaCubeX/mihomo) 的二次开发分支）是一个基于规则的高性能跨平台代理客户端核心。本仓库提供了可通过 GitHub 仓库安装和更新的 Mihomo 技能，包含完整的配置指南和使用参考。
 
 ## ✨ 特点
 
@@ -16,11 +16,46 @@
 - **故障排查**：10 类常见问题及解决方法
 - **Claude Code 集成**：可在 Claude Code 中直接使用 `/mihomo` 快速调取
 
+## 📦 安装与更新
+
+### Claude Code 插件
+
+从 Claude Code 会话中添加本仓库：
+
+```
+/plugin marketplace add TYBLHQY/mihomo-skill
+/plugin install mihomo-skill
+```
+
+安装后，Claude Code 会从仓库中的 `skills/mihomo/` 加载技能。要获取仓库中的最新版本，重新执行安装/更新命令，或在插件管理界面更新该插件。
+
+### Skills CLI
+
+也可以使用兼容多种 AI 编程工具的 Skills CLI：
+
+```
+# 添加到当前项目
+npx skills add TYBLHQY/mihomo-skill
+
+# 全局安装
+npx skills add TYBLHQY/mihomo-skill -g
+```
+
+再次运行同一命令即可从 GitHub 获取更新。
+
+### 手动安装
+
+技能入口位于 [`skills/mihomo/SKILL.md`](./skills/mihomo/SKILL.md)。如果使用不支持插件或 Skills CLI 的工具，将该目录复制到工具的 skills 目录即可：
+
+```
+cp -R skills/mihomo <your-tool-skills-directory>/mihomo
+```
+
 ## 📖 文档
 
 | 文件 | 说明 |
 |------|------|
-| [`SKILL.md`](./SKILL.md) | Mihomo 配置完整指南（主文档） |
+| [`skills/mihomo/SKILL.md`](./skills/mihomo/SKILL.md) | Mihomo 配置完整指南（主文档） |
 | [`evals/evals.json`](./evals/evals.json) | 技能评估与测试数据 |
 
 ### SKILL.md 涵盖内容
@@ -41,7 +76,7 @@
 
 ## 🚀 在 Claude Code 中使用
 
-在 Claude Code 会话中直接输入：
+安装插件后，在 Claude Code 会话中直接输入：
 
 ```
 /mihomo <你的问题>
